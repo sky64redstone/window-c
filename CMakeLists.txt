@@ -6,15 +6,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
 FetchContent_Declare(
-    window
-    GIT_REPOSITORY https://github.com/sky64redstone/window.git
-    GIT_TAG main
+  window
+  GIT_REPOSITORY https://github.com/sky64redstone/window.git
+  GIT_TAG main
 )
 FetchContent_MakeAvailable(window)
 
 include_directories(
-    ${CMAKE_SOURCE_DIR}/include
-    ${window_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${window_SOURCE_DIR}/include
 )
 
 add_library(window_c STATIC src/window_c.cpp)
