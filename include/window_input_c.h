@@ -1,6 +1,8 @@
 #ifndef WINDOW_INPUT_C_H
   #define WINDOW_INPUT_C_H
 
+  #include <stdbool.h>
+
   #ifdef __cplusplus
   extern "C" {
   #endif
