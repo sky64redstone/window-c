@@ -1,9 +1,7 @@
 #include "window_c.h"
-
 #include "window.hpp"
 
 #include <new>
-#include <unordered_map>
 
 struct callback_state {
   window_key_event_fn key_fn = nullptr;
@@ -34,19 +32,6 @@ struct window_handle {
 };
 
 namespace {
-  static thread_local window_handle* g_active_handle = nullptr;
-  static std::unordered_map<window::window*, window_handle*> g_handles;
-
-  struct active_handle_guard {
-    window_handle* previous;
-    explicit active_handle_guard(window_handle* next) : previous(g_active_handle) { g_active_handle = next; }
-    ~active_handle_guard() { g_active_handle = previous; }
-  };
-
-  static window_handle* from_impl(window::window* impl) {
-    auto it = g_handles.find(impl);
-    return (it == g_handles.end()) ? nullptr : it->second;
-  }
 
   static window_result convert(window::result r) {
     return static_cast<window_result>(r);
@@ -59,74 +44,66 @@ namespace {
   static window_key_descriptor convert(window::key_descriptor k) {
     return window_key_descriptor{
       static_cast<window_key>(k.k),
-        k.description
+      k.description
     };
   }
 
   static window_button_descriptor convert(window::button_descriptor b) {
     return window_button_descriptor{
       static_cast<window_button>(b.b),
-        b.description
+      b.description
     };
   }
 
-  static void key_trampoline(bool down, window::key_descriptor& key) {
-    auto* h = g_active_handle;
-    if (!h || !h->callbacks.key_fn) {
-      return;
-    }
+  static window_handle* from_data(void* data) {
+    return static_cast<window_handle*>(data);
+  }
+
+  static void key_trampoline(bool down, window::key_descriptor& key, void* data) {
+    auto* h = from_data(data);
+    if (!h || !h->callbacks.key_fn) return;
     h->callbacks.key_fn(h->callbacks.key_ud, down, convert(key));
   }
 
-  static void button_trampoline(bool down, window::button_descriptor& button) {
-    auto* h = g_active_handle;
-    if (!h || !h->callbacks.button_fn) {
-      return;
-    }
+  static void button_trampoline(bool down, window::button_descriptor& button, void* data) {
+    auto* h = from_data(data);
+    if (!h || !h->callbacks.button_fn) return;
     h->callbacks.button_fn(h->callbacks.button_ud, down, convert(button));
   }
 
-  static void dblclk_trampoline(window::button_descriptor& button) {
-    auto* h = g_active_handle;
-    if (!h) {
-      return;
-    }
+  static void dblclk_trampoline(window::button_descriptor& button, void* data) {
+    auto* h = from_data(data);
+    if (!h) return;
+
     if (!h->callbacks.dblclk_fn) {
-      button_trampoline(true, button);
+      button_trampoline(true, button, data);
       return;
     }
+
     h->callbacks.dblclk_fn(h->callbacks.dblclk_ud, convert(button));
   }
 
-  static void mouse_trampoline(int x, int y) {
-    auto* h = g_active_handle;
-    if (!h || !h->callbacks.mouse_fn) {
-      return;
-    }
+  static void mouse_trampoline(int x, int y, void* data) {
+    auto* h = from_data(data);
+    if (!h || !h->callbacks.mouse_fn) return;
     h->callbacks.mouse_fn(h->callbacks.mouse_ud, x, y);
   }
 
-  static void vscroll_trampoline(float delta) {
-    auto* h = g_active_handle;
-    if (!h || !h->callbacks.vscroll_fn) {
-      return;
-    }
+  static void vscroll_trampoline(float delta, void* data) {
+    auto* h = from_data(data);
+    if (!h || !h->callbacks.vscroll_fn) return;
     h->callbacks.vscroll_fn(h->callbacks.vscroll_ud, delta);
   }
 
-  static void hscroll_trampoline(float delta) {
-    auto* h = g_active_handle;
-    if (!h || !h->callbacks.hscroll_fn) {
-      return;
-    }
+  static void hscroll_trampoline(float delta, void* data) {
+    auto* h = from_data(data);
+    if (!h || !h->callbacks.hscroll_fn) return;
     h->callbacks.hscroll_fn(h->callbacks.hscroll_ud, delta);
   }
 
-  static void size_trampoline(int w, int hgt) {
-    auto* h = g_active_handle;
-    if (!h || !h->callbacks.size_fn) {
-      return;
-    }
+  static void size_trampoline(int w, int hgt, void* data) {
+    auto* h = from_data(data);
+    if (!h || !h->callbacks.size_fn) return;
     h->callbacks.size_fn(h->callbacks.size_ud, w, hgt);
   }
 
@@ -146,9 +123,7 @@ extern "C" {
 
   window_handle* window_create_handle(void) {
     auto* handle = new (std::nothrow) window_handle();
-    if (!handle) {
-      return nullptr;
-    }
+    if (!handle) return nullptr;
 
     handle->impl = new (std::nothrow) window::window();
     if (!handle->impl) {
@@ -156,18 +131,16 @@ extern "C" {
       return nullptr;
     }
 
-    g_handles.emplace(handle->impl, handle);
+    handle->impl->set_user_data(handle);
     bind_callbacks(handle);
+
     return handle;
   }
 
   void window_destroy(window_handle* handle) {
-    if (!handle) {
-      return;
-    }
+    if (!handle) return;
 
     if (handle->impl) {
-      g_handles.erase(handle->impl);
       handle->impl->destroy();
       delete handle->impl;
       handle->impl = nullptr;
@@ -177,23 +150,17 @@ extern "C" {
   }
 
   window_result window_create(window_handle* handle, int width, int height, const char* title) {
-    if (!handle || !handle->impl) {
-      return WINDOW_RESULT_BADWINDOW;
-    }
+    if (!handle || !handle->impl) return WINDOW_RESULT_BADWINDOW;
     return convert(handle->impl->create(width, height, title));
   }
 
   window_result window_set_title(window_handle* handle, const char* title) {
-    if (!handle || !handle->impl) {
-      return WINDOW_RESULT_BADWINDOW;
-    }
+    if (!handle || !handle->impl) return WINDOW_RESULT_BADWINDOW;
     return convert(handle->impl->set_title(title));
   }
 
   window_result window_set_size(window_handle* handle, int width, int height) {
-    if (!handle || !handle->impl) {
-      return WINDOW_RESULT_BADWINDOW;
-    }
+    if (!handle || !handle->impl) return WINDOW_RESULT_BADWINDOW;
     return convert(handle->impl->set_size(width, height));
   }
 
@@ -202,94 +169,68 @@ extern "C" {
   }
 
   window_result window_poll_events(window_handle* handle) {
-    if (!handle || !handle->impl) {
-      return WINDOW_RESULT_BADWINDOW;
-    }
-
-    active_handle_guard guard(handle);
+    if (!handle || !handle->impl) return WINDOW_RESULT_BADWINDOW;
     return convert(handle->impl->poll_events());
   }
 
   window_result window_make_opengl_context(window_handle* handle) {
-    if (!handle || !handle->impl) {
-      return WINDOW_RESULT_BADWINDOW;
-    }
+    if (!handle || !handle->impl) return WINDOW_RESULT_BADWINDOW;
     return convert(handle->impl->make_opengl_context());
   }
 
   window_result window_swap_buffers(const window_handle* handle) {
-    if (!handle || !handle->impl) {
-      return WINDOW_RESULT_BADWINDOW;
-    }
+    if (!handle || !handle->impl) return WINDOW_RESULT_BADWINDOW;
     return convert(handle->impl->swap_buffers());
   }
 
   window_result window_swap_interval(const window_handle* handle, int interval) {
-    if (!handle || !handle->impl) {
-      return WINDOW_RESULT_BADWINDOW;
-    }
+    if (!handle || !handle->impl) return WINDOW_RESULT_BADWINDOW;
     return convert(handle->impl->swap_interval(interval));
   }
 
   window_backend window_get_backend(const window_handle* handle) {
-    if (!handle || !handle->impl) {
-      return WINDOW_BACKEND_WIN32;
-    }
+    if (!handle || !handle->impl) return WINDOW_BACKEND_WIN32;
     return convert(handle->impl->get_backend());
   }
 
   void window_set_key_event(window_handle* handle, window_key_event_fn callback, void* user_data) {
-    if (!handle) {
-      return;
-    }
+    if (!handle) return;
     handle->callbacks.key_fn = callback;
     handle->callbacks.key_ud = user_data;
   }
 
   void window_set_button_event(window_handle* handle, window_button_event_fn callback, void* user_data) {
-    if (!handle) {
-      return;
-    }
+    if (!handle) return;
     handle->callbacks.button_fn = callback;
     handle->callbacks.button_ud = user_data;
   }
 
   void window_set_dblclk_event(window_handle* handle, window_dblclk_event_fn callback, void* user_data) {
-    if (!handle) {
-      return;
-    }
+    if (!handle) return;
     handle->callbacks.dblclk_fn = callback;
     handle->callbacks.dblclk_ud = user_data;
   }
 
   void window_set_mouse_event(window_handle* handle, window_mouse_event_fn callback, void* user_data) {
-    if (!handle) {
-      return;
-    }
+    if (!handle) return;
     handle->callbacks.mouse_fn = callback;
     handle->callbacks.mouse_ud = user_data;
   }
 
   void window_set_vscroll_event(window_handle* handle, window_scroll_event_fn callback, void* user_data) {
-    if (!handle) {
-      return;
-    }
+    if (!handle) return;
     handle->callbacks.vscroll_fn = callback;
     handle->callbacks.vscroll_ud = user_data;
   }
 
   void window_set_hscroll_event(window_handle* handle, window_scroll_event_fn callback, void* user_data) {
-    if (!handle) {
-      return;
-    }
+    if (!handle) return;
     handle->callbacks.hscroll_fn = callback;
     handle->callbacks.hscroll_ud = user_data;
   }
 
   void window_set_size_event(window_handle* handle, window_size_event_fn callback, void* user_data) {
-    if (!handle) {
-      return;
-    }
+    if (!handle) return;
     handle->callbacks.size_fn = callback;
     handle->callbacks.size_ud = user_data;
   }
