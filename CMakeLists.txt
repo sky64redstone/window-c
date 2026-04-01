@@ -8,7 +8,7 @@ include(FetchContent)
 FetchContent_Declare(
   window
   GIT_REPOSITORY https://github.com/sky64redstone/window.git
-  GIT_TAG main
+  GIT_TAG v1.0
 )
 FetchContent_MakeAvailable(window)
 
