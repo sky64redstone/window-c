@@ -5,25 +5,14 @@
 
 struct callback_state {
   window_key_event_fn key_fn = nullptr;
-  void* key_ud = nullptr;
-
   window_button_event_fn button_fn = nullptr;
-  void* button_ud = nullptr;
-
   window_dblclk_event_fn dblclk_fn = nullptr;
-  void* dblclk_ud = nullptr;
-
   window_mouse_event_fn mouse_fn = nullptr;
-  void* mouse_ud = nullptr;
-
   window_scroll_event_fn vscroll_fn = nullptr;
-  void* vscroll_ud = nullptr;
-
   window_scroll_event_fn hscroll_fn = nullptr;
-  void* hscroll_ud = nullptr;
-
   window_size_event_fn size_fn = nullptr;
-  void* size_ud = nullptr;
+
+  void* user_data;
 };
 
 struct window_handle {
@@ -62,13 +51,13 @@ namespace {
   static void key_trampoline(bool down, window::key_descriptor& key, void* data) {
     auto* h = from_data(data);
     if (!h || !h->callbacks.key_fn) return;
-    h->callbacks.key_fn(h->callbacks.key_ud, down, convert(key));
+    h->callbacks.key_fn(h->callbacks.user_data, down, convert(key));
   }
 
   static void button_trampoline(bool down, window::button_descriptor& button, void* data) {
     auto* h = from_data(data);
     if (!h || !h->callbacks.button_fn) return;
-    h->callbacks.button_fn(h->callbacks.button_ud, down, convert(button));
+    h->callbacks.button_fn(h->callbacks.user_data, down, convert(button));
   }
 
   static void dblclk_trampoline(window::button_descriptor& button, void* data) {
@@ -80,31 +69,31 @@ namespace {
       return;
     }
 
-    h->callbacks.dblclk_fn(h->callbacks.dblclk_ud, convert(button));
+    h->callbacks.dblclk_fn(h->callbacks.user_data, convert(button));
   }
 
   static void mouse_trampoline(int x, int y, void* data) {
     auto* h = from_data(data);
     if (!h || !h->callbacks.mouse_fn) return;
-    h->callbacks.mouse_fn(h->callbacks.mouse_ud, x, y);
+    h->callbacks.mouse_fn(h->callbacks.user_data, x, y);
   }
 
   static void vscroll_trampoline(float delta, void* data) {
     auto* h = from_data(data);
     if (!h || !h->callbacks.vscroll_fn) return;
-    h->callbacks.vscroll_fn(h->callbacks.vscroll_ud, delta);
+    h->callbacks.vscroll_fn(h->callbacks.user_data, delta);
   }
 
   static void hscroll_trampoline(float delta, void* data) {
     auto* h = from_data(data);
     if (!h || !h->callbacks.hscroll_fn) return;
-    h->callbacks.hscroll_fn(h->callbacks.hscroll_ud, delta);
+    h->callbacks.hscroll_fn(h->callbacks.user_data, delta);
   }
 
   static void size_trampoline(int w, int hgt, void* data) {
     auto* h = from_data(data);
     if (!h || !h->callbacks.size_fn) return;
-    h->callbacks.size_fn(h->callbacks.size_ud, w, hgt);
+    h->callbacks.size_fn(h->callbacks.user_data, w, hgt);
   }
 
   static void bind_callbacks(window_handle* handle) {
@@ -193,46 +182,44 @@ extern "C" {
     return convert(handle->impl->get_backend());
   }
 
-  void window_set_key_event(window_handle* handle, window_key_event_fn callback, void* user_data) {
+  void* window_set_user_data(window_handle* handle, void* data) {
+    if (!handle || !handle->impl) return NULL;
+    return handle->impl->set_user_data(data);
+  }
+
+  void window_set_key_event(window_handle* handle, window_key_event_fn callback) {
     if (!handle) return;
     handle->callbacks.key_fn = callback;
-    handle->callbacks.key_ud = user_data;
   }
 
-  void window_set_button_event(window_handle* handle, window_button_event_fn callback, void* user_data) {
+  void window_set_button_event(window_handle* handle, window_button_event_fn callback) {
     if (!handle) return;
     handle->callbacks.button_fn = callback;
-    handle->callbacks.button_ud = user_data;
   }
 
-  void window_set_dblclk_event(window_handle* handle, window_dblclk_event_fn callback, void* user_data) {
+  void window_set_dblclk_event(window_handle* handle, window_dblclk_event_fn callback) {
     if (!handle) return;
     handle->callbacks.dblclk_fn = callback;
-    handle->callbacks.dblclk_ud = user_data;
   }
 
-  void window_set_mouse_event(window_handle* handle, window_mouse_event_fn callback, void* user_data) {
+  void window_set_mouse_event(window_handle* handle, window_mouse_event_fn callback) {
     if (!handle) return;
     handle->callbacks.mouse_fn = callback;
-    handle->callbacks.mouse_ud = user_data;
   }
 
-  void window_set_vscroll_event(window_handle* handle, window_scroll_event_fn callback, void* user_data) {
+  void window_set_vscroll_event(window_handle* handle, window_scroll_event_fn callback) {
     if (!handle) return;
     handle->callbacks.vscroll_fn = callback;
-    handle->callbacks.vscroll_ud = user_data;
   }
 
-  void window_set_hscroll_event(window_handle* handle, window_scroll_event_fn callback, void* user_data) {
+  void window_set_hscroll_event(window_handle* handle, window_scroll_event_fn callback) {
     if (!handle) return;
     handle->callbacks.hscroll_fn = callback;
-    handle->callbacks.hscroll_ud = user_data;
   }
 
-  void window_set_size_event(window_handle* handle, window_size_event_fn callback, void* user_data) {
+  void window_set_size_event(window_handle* handle, window_size_event_fn callback) {
     if (!handle) return;
     handle->callbacks.size_fn = callback;
-    handle->callbacks.size_ud = user_data;
   }
 
 } // extern "C"

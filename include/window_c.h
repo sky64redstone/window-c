@@ -41,14 +41,15 @@
     window_result window_swap_buffers(const window_handle* handle);
     window_result window_swap_interval(const window_handle* handle, int interval);
     window_backend window_get_backend(const window_handle* handle);
+    void* window_set_user_data(window_handle* handle, void* data);
 
-    void window_set_key_event(window_handle* handle, window_key_event_fn callback, void* user_data);
-    void window_set_button_event(window_handle* handle, window_button_event_fn callback, void* user_data);
-    void window_set_dblclk_event(window_handle* handle, window_dblclk_event_fn callback, void* user_data);
-    void window_set_mouse_event(window_handle* handle, window_mouse_event_fn callback, void* user_data);
-    void window_set_vscroll_event(window_handle* handle, window_scroll_event_fn callback, void* user_data);
-    void window_set_hscroll_event(window_handle* handle, window_scroll_event_fn callback, void* user_data);
-    void window_set_size_event(window_handle* handle, window_size_event_fn callback, void* user_data);
+    void window_set_key_event(window_handle* handle, window_key_event_fn callback);
+    void window_set_button_event(window_handle* handle, window_button_event_fn callback);
+    void window_set_dblclk_event(window_handle* handle, window_dblclk_event_fn callback);
+    void window_set_mouse_event(window_handle* handle, window_mouse_event_fn callback);
+    void window_set_vscroll_event(window_handle* handle, window_scroll_event_fn callback);
+    void window_set_hscroll_event(window_handle* handle, window_scroll_event_fn callback);
+    void window_set_size_event(window_handle* handle, window_size_event_fn callback);
 
   #ifdef __cplusplus
   }
