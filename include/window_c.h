@@ -51,6 +51,9 @@
     void window_set_hscroll_event(window_handle* handle, window_scroll_event_fn callback);
     void window_set_size_event(window_handle* handle, window_size_event_fn callback);
 
+    void window_set_appname(window_handle* handle, const char* appname);
+    void window_set_glversion(window_handle* handle, int major, int minor);
+
   #ifdef __cplusplus
   }
   #endif

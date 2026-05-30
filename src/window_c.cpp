@@ -1,5 +1,5 @@
 #include "window_c.h"
-#include "window.hpp"
+#include "window/window.hpp"
 
 #include <new>
 
@@ -220,6 +220,15 @@ extern "C" {
   void window_set_size_event(window_handle* handle, window_size_event_fn callback) {
     if (!handle) return;
     handle->callbacks.size_fn = callback;
+  }
+
+  void window_set_appname(window_handle* handle, const char* appname) {
+    if (!handle || !handle->impl) return;
+    handle->impl->set_appname(appname);
+  }
+  void window_set_glversion(window_handle* handle, int major, int minor) {
+    if (!handle || !handle->impl) return;
+    handle->impl->set_glversion(major, minor);
   }
 
 } // extern "C"

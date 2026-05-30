@@ -5,6 +5,9 @@
 int main(void) {
   window_handle* window = window_create_handle();
 
+  window_set_appname(window, "mywindowapp");
+  window_set_glversion(window, 3, 3);
+
   window_result result = window_create(window, 800, 600, "Test Window");
   if (result != WINDOW_RESULT_SUCCESS) {
     fprintf(stderr, "Failed to create window\n");
